@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+- job_name: 'api-gateway'
+  metrics_path: '/actuator/prometheus'
+  static_configs:
+  - targets: ['api-gateway:9000']
+
+- job_name: 'movie-service'
+  metrics_path: '/actuator/prometheus'
+  static_configs:
+  - targets: ['movie-service:9004']
+
+- job_name: 'booking-service'
+  metrics_path: '/actuator/prometheus'
+  static_configs:
+  - targets: ['booking-service:9005']
+
+- job_name: 'customer-service'
+  metrics_path: '/actuator/prometheus'
+  static_configs:
+  - targets: ['customer-service:9006']
+
+- job_name: 'node-exporter'
+  static_configs:
+  - targets: ['node-exporter:9100']

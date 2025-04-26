@@ -1,0 +1,181 @@
+version: '3.8'
+
+services:
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "9000:9000"
+    environment:
+      - eureka.client.service-url.defaultZone=http://eureka-server:8761/eureka/
+      - LOGSTASH_HOST=logstash:5000   
+    depends_on:
+      - eureka-server
+    networks:
+      - microservices-net
+
+  movie-service:
+    build: ./movie-service
+    container_name: movie-service
+    ports:
+      - "9004:9004"
+    environment:
+      - spring.datasource.url=jdbc:mysql://mysql:3306/moviedb?useSSL=false&serverTimezone=UTC
+      - spring.datasource.username=root
+      - spring.datasource.password=root_password
+      - spring.jpa.hibernate.ddl-auto=update
+      - eureka.client.service-url.defaultZone=http://eureka-server:8761/eureka/
+      - LOGSTASH_HOST=logstash:5000   
+    depends_on:
+      - eureka-server
+      - mysql
+    networks:
+      - microservices-net
+
+  booking-service:
+    build: ./booking-service
+    container_name: booking-service
+    ports:
+      - "9005:9005"
+    environment:
+      - spring.datasource.url=jdbc:mysql://mysql:3306/bookingdb?useSSL=false&serverTimezone=UTC
+      - spring.datasource.username=root
+      - spring.datasource.password=root_password
+      - spring.jpa.hibernate.ddl-auto=update
+      - eureka.client.service-url.defaultZone=http://eureka-server:8761/eureka/
+      - LOGSTASH_HOST=logstash:5000   
+    depends_on:
+      - eureka-server
+      - mysql
+    networks:
+      - microservices-net
+
+  customer-service:
+    build: ./customer-service
+    container_name: customer-service
+    ports:
+      - "9006:9006"
+    environment:
+      - spring.datasource.url=jdbc:mysql://mysql:3306/customerdb?useSSL=false&serverTimezone=UTC
+      - spring.datasource.username=root
+      - spring.datasource.password=root_password
+      - spring.jpa.hibernate.ddl-auto=update
+      - eureka.client.service-url.defaultZone=http://eureka-server:8761/eureka/
+      - LOGSTASH_HOST=logstash:5000   
+    depends_on:
+      - eureka-server
+      - mysql
+    networks:
+      - microservices-net
+
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - microservices-net
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    ports:
+      - "3306:3306"
+    networks:
+      - microservices-net
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root_password
+    ports:
+      - "8085:80"
+    depends_on:
+      - mysql
+    networks:
+      - microservices-net
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - microservices-net
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - microservices-net
+
+  node-exporter:
+    image: prom/node-exporter
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - microservices-net
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    networks:
+      - microservices-net
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.12.0
+    container_name: logstash
+    depends_on:
+      - elasticsearch
+    ports:
+      - "5000:5000"
+      - "5044:5044"
+      - "9600:9600"
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+    networks:
+      - microservices-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.10
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - microservices-net
+
+networks:
+  microservices-net:
+    driver: bridge
+
+volumes:
+  esdata:
